@@ -1,0 +1,5 @@
+entity.forum_notification_frequency.add_form:
+  route_name: entity.forum_notification_frequency.add_form
+  title: 'Add Forum notification frequency'
+  appears_on:
+    - entity.forum_notification_frequency.collection

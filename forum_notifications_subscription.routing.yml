@@ -1,0 +1,29 @@
+forum_notifications_subscription.settings:
+  path: /admin/config/forum_notifications_subscription
+  defaults:
+      _form: '\Drupal\forum_notifications_subscription\Form\ForumNotificationsSubscriptionSettingsForm'
+      _title: 'Forum Notifications Subscription Settings'
+  requirements:
+    _permission: 'administer site configuration'
+
+forum_notifications_subscription.action_link_subscription:
+  path: '/entity/subscription/{entity_type_id}/{entity_id}'
+  defaults:
+    _controller: '\Drupal\forum_notifications_subscription\Controller\ActionLinkController::subscribe'
+  requirements:
+      _permission: 'access content'
+
+forum_notifications_subscription.action_link_unsubscription:
+  path: '/entity/unsubscription/{entity_type_id}/{entity_id}'
+  defaults:
+    _controller: '\Drupal\forum_notifications_subscription\Controller\ActionLinkController::unsubscribe'
+  requirements:
+        _permission: 'access content'
+
+forum_notifications_subscription.config:
+  path: /admin/config/forum_notifications_subscription/forum_notifications_subscription
+  defaults:
+      _form: '\Drupal\forum_notifications_subscription\Form\FrequencySettingsForm'
+      _title: 'Forum Notification Settings'
+  requirements:
+    _permission: 'administer site configuration'

@@ -1,0 +1,10 @@
+services:
+  forum_notifications_subscription.frequency:
+    class: Drupal\forum_notifications_subscription\ForumNotificationsSubscriptionService
+    arguments: ['@current_user', '@entity_type.manager']
+  mention_events_subscriber:
+    # Event subscriber class that will listen for the events.
+    class: '\Drupal\forum_notifications_subscription\EventSubscriber\MentionEventsSubscriber'
+    # Tagged as an event_subscriber to register this subscriber with the event_dispatch service.
+    tags:
+      - { name: 'event_subscriber' }

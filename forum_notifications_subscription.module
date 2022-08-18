@@ -1,0 +1,554 @@
+<?php
+
+use Drupal\Core\Entity\EntityInterface;
+use Drupal\Core\Entity\Display\EntityViewDisplayInterface;
+use Drupal\Core\StringTranslation\TranslatableMarkup;
+use Drupal\Core\Url;
+use Drupal\Core\Link;
+use Drupal\Core\Form\FormStateInterface;
+use Drupal\Comment\CommentInterface;
+use Symfony\Component\HttpFoundation\Request;
+use Drupal\Core\Routing\RouteMatchInterface;
+
+/**
+ * Implements hook_help().
+ */
+function forum_notifications_subscription_help($route_name, RouteMatchInterface $route_match) {
+  switch ($route_name) {
+    // Main module help for the forum_notifications_subscription module.
+    case 'help.page.forum_notifications_subscription':
+      $output = '';
+      $output .= '<h2>' . t('About') . '</h2>';
+      $output .= '<p>' . t('The Forum Notifications Subscription module helps site administrators to set up a notification process based on 
+the forum module. It gives then site users the possibility to subscribe/unsubscribe to forum posts and comments.') . '</p>';
+      $output .= '<p>';
+      $output .= t('Visit the <a href=":project_link">Project page</a> on Drupal.org for more information.', [
+        ':project_link' => 'https://www.drupal.org/project/forum_notifications_subscription',
+      ]);
+      $output .= '</p>';
+
+      return $output;
+  }
+}
+
+/**
+ * Implements hook_entity_extra_field_info().
+ */
+function forum_notifications_subscription_entity_extra_field_info() {
+  $extra = [];
+
+  $extra['node']['forum'] = [
+    'display' => [
+      'forum_notifications_subscription' => [
+        'label' => t('Subscription link'),
+        'description' => t('The Subscription link'),
+        'weight' => 10,
+      ],
+    ],
+  ];
+  $extra['taxonomy_term']['forums'] = [
+    'display' => [
+      'forum_notifications_subscription' => [
+        'label' => t('Subscription link'),
+        'description' => t('The Subscription link'),
+        'weight' => 10,
+      ],
+    ],
+  ];
+
+  return $extra;
+}
+
+/**
+ * Implements hook_entity_view().
+ *
+ * Handles the 'show_in_links' and 'show_as_field' flag options.
+ */
+function forum_notifications_subscription_entity_view(array &$build, EntityInterface $entity, EntityViewDisplayInterface $display, $view_mode) {
+  // Don't show on previews.
+  if ($entity->isNew()) {
+    return;
+  }
+
+  $build['#cache']['contexts'][] = 'user.permissions';
+
+  $config = \Drupal::config('forum_notifications_subscription.settings');
+  $settings = $config->get('settings');
+  if ($entity->bundle() === 'forum' || $entity->bundle() === 'forums') {
+    $frequency = \Drupal::service('forum_notifications_subscription.frequency')
+      ->checkNotificationFrequencyByEntity($entity);
+    /**
+     * For Forum topic
+     */
+    if ($entity->getEntityTypeId() == 'node') {
+      // Load entities by their property values.
+      if ($frequency) {
+        $url = Url::fromUserInput('/entity/unsubscription/' . $entity->getEntityTypeId() . '/' . $entity->id());
+        $label = $settings['topic_label_off'];
+      }
+      else {
+        $url = Url::fromUserInput('/entity/subscription/' . $entity->getEntityTypeId() . '/' . $entity->id());
+        $label = $settings['topic_label_on'];
+        //$description = "<div>Use this button to subscribe to this topic so you will receive notification when peaple comment.</div>";
+      }
+      $the_link = Link::fromTextAndUrl($label, $url);
+      $the_link = $the_link->toRenderable();
+
+      $the_link['#attributes'] = [
+        'id' => 'forum-subscription',
+        'class' => ['use-ajax', 'btn', 'btn-primary'],
+      ];
+      $build['forum_notifications_subscription'] = [
+        '#type' => 'fieldset',
+        '#prefix' => "<div>",
+        //        '#prefix' => "<div>" . $description,
+        '#suffix' => '</div>',
+        '#cache' => [
+          'tags' => ['forum_notification_frequency_list'],
+        ],
+      ];
+      $build['forum_notifications_subscription']['subscription_link'] = $the_link;
+    }
+    elseif ($entity->getEntityTypeId() == 'taxonomy_term') {
+      if ($frequency) {
+        $url = Url::fromUserInput('/entity/unsubscription/' . $entity->getEntityTypeId() . '/' . $entity->id());
+        $label = $settings['forum_label_off'];
+        //$description = "<div>Use this button to un-subscribe to this forum so you will receive notification when peaple post topics.</div>";
+      }
+      else {
+        $url = Url::fromUserInput('/entity/subscription/' . $entity->getEntityTypeId() . '/' . $entity->id());
+        $label = $settings['forum_label_on'];
+        //$description = "<div>Use this button to subscribe to this forum so you will receive notification when peaple post topics.</div>";
+      }
+      $the_link = Link::fromTextAndUrl($label, $url);
+      $the_link = $the_link->toRenderable();
+
+      $the_link['#attributes'] = [
+        'id' => 'forum-subscription',
+        'class' => ['use-ajax', 'btn', 'btn-primary'],
+      ];
+      $build['forum_notifications_subscription'] = [
+        '#type' => 'fieldset',
+        '#prefix' => "<div>",
+        //        '#prefix' => "<div>" . $description,
+        '#suffix' => '</div>',
+        '#cache' => [
+          'tags' => ['forum_notification_frequency_list'],
+        ],
+      ];
+      $build['forum_notifications_subscription']['subscription_link'] = $the_link;
+    }
+  }
+
+}
+
+/**
+ * Implements hook_form_alter().
+ */
+function forum_notifications_subscription_form_alter(&$form, FormStateInterface $form_state, $form_id) {
+  switch ($form_id) {
+    case 'forum_notification_frequency_edit_form':
+      $form['name']['#disabled'] = TRUE;
+      $form['type']['#disabled'] = TRUE;
+      $form['entity_id']['#disabled'] = TRUE;
+      $form['entity_name']['#disabled'] = TRUE;
+      $dropdown_array = [
+        'Daily Digest Emails' => 'Daily Digest Emails',
+        'Single Emails' => 'Single Emails',
+      ];
+      $form['frequency']['widget'][0]['value'] = [
+        '#type' => 'select',
+        '#default_value' => '1',
+        '#options' => $dropdown_array,
+      ];
+      break;
+
+    case 'user_form':
+      $forumEntities = \Drupal::service('forum_notifications_subscription.frequency')
+        ->getUserNotificationEntities('Forum');
+      $topicEntities = \Drupal::service('forum_notifications_subscription.frequency')
+        ->getUserNotificationEntities('Forum topic');
+
+      $dropdown_array = [
+        'Daily Digest Emails' => 'Daily Digest Emails',
+        'Single Emails' => 'Single Emails',
+      ];
+      $form['forum_subscriptions'] = [
+        '#type' => 'fieldset',
+        '#title' => 'Forum subscriptions',
+      ];
+      $form['forum_subscriptions']['forum_daily_info'] = [
+        '#type' => 'markup',
+        '#markup' => "<div><strong>Description for daily digest emails:</strong><br> Daily digest emails will be sent out at the end of each day notifying you of any new discussion topics that were created in this forum.</div>",
+      ];
+      $form['forum_subscriptions']['forum_digest_info'] = [
+        '#type' => 'markup',
+        '#markup' => "<div><strong>Description for single emails:</strong><br> Single emails will be sent out each time a new discussion topic is created in this forum.</div>",
+      ];
+      $forum_header = [
+        'forum_id' => t('#'),
+        'forum' => t('Forum'),
+        'forum_frequency' => t('Frequency'),
+      ];
+      $form['forum_subscriptions']['forum_table'] = [
+        '#type' => 'table',
+        '#header' => $forum_header,
+        '#tabledrag' => FALSE,
+        '#empty' => t('No forum subscriptions available.'),
+      ];
+      $forum_field_count = 1;
+
+      foreach ($forumEntities as $forum_id => $forum_ent) {
+        $form['forum_subscriptions']['forum_table'][$forum_field_count]['forum_id'] = [
+          '#type' => 'hidden',
+          '#value' => $forum_ent->id(),
+          //'#column' => 'one',
+        ];
+
+        $form['forum_subscriptions']['forum_table'][$forum_field_count]['forum'] = [
+          '#type' => 'label',
+          '#title' => $forum_ent->getSubscribedEntityName(),
+          //'#column' => 'one',
+        ];
+        $form['forum_subscriptions']['forum_table'][$forum_field_count]['forum_frequency'] = [
+          '#type' => 'select',
+          '#default_value' => $forum_ent->getFrequency(),
+          '#options' => $dropdown_array,
+        ];
+        $forum_field_count++;
+      }
+
+      $form['topic_subscriptions'] = [
+        '#type' => 'fieldset',
+        '#title' => 'Forum topic subscriptions',
+      ];
+      $form['topic_subscriptions']['topic_daily_info'] = [
+        '#type' => 'markup',
+        '#markup' => "<div><strong>Description for daily digest emails:</strong><br> Daily digest emails will be sent out at the end of each day notifying you of any new comments made in this specific  discussion topic.</div>",
+      ];
+      $form['topic_subscriptions']['topic_digest_info'] = [
+        '#type' => 'markup',
+        '#markup' => "<div><strong>Description for single emails:</strong><br> Single emails will be sent out each time a new comment is made in this specific discussion topic.</div>",
+      ];
+      $topic_header = [
+        'topic_id' => t('#'),
+        'topic' => t('Forums and Discussion Topics'),
+        'topic_frequency' => t('Frequency'),
+      ];
+      $form['topic_subscriptions']['topic_table'] = [
+        '#type' => 'table',
+        '#header' => $topic_header,
+        '#tabledrag' => FALSE,
+        '#empty' => t('No forum topic subscriptions available.'),
+      ];
+      $topic_field_count = 1;
+
+      foreach ($topicEntities as $topic_id => $topic_ent) {
+        $form['topic_subscriptions']['topic_table'][$topic_field_count]['topic_id'] = [
+          '#type' => 'hidden',
+          '#value' => $topic_ent->id(),
+        ];
+
+        $form['topic_subscriptions']['topic_table'][$topic_field_count]['topic'] = [
+          '#type' => 'label',
+          '#title' => "Discussion topic entitled \"" . $topic_ent->getSubscribedEntityName() . "\" from the " . getForumName($topic_ent->getSubscribedEntityId()) . " forum",
+        ];
+        $form['topic_subscriptions']['topic_table'][$topic_field_count]['topic_frequency'] = [
+          '#type' => 'select',
+          '#default_value' => $topic_ent->getFrequency(),
+          '#options' => $dropdown_array,
+        ];
+        $topic_field_count++;
+      }
+
+      $form['actions']['submit']['#submit'][] = 'forum_notifications_subscription_user_from_submit';
+      return $form;
+      break;
+  }
+}
+
+/**
+ * Implements hook_ENTITY_TYPE_insert().
+ *
+ * @param \Drupal\Core\Entity\EntityInterface $entity
+ *
+ * Add to queue for those registered with this taxonomy term id.
+ */
+function forum_notifications_subscription_node_insert(Drupal\Core\Entity\EntityInterface $entity) {
+  $config = \Drupal::config('forum_notifications_subscription.settings');
+  $settings = $config->get('settings');
+  if ($entity->bundle() == 'forum') {
+    try {
+      $forum = \Drupal::entityTypeManager()
+        ->getStorage('taxonomy_term')
+        ->load($entity->get('taxonomy_forums')[0]->target_id);
+      if ($forum->bundle() === 'forums') {
+        $base_url = Request::createFromGlobals()
+          ->getSchemeAndHttpHost();
+        $postOwner = $entity->getOwner();
+        $frequencies = \Drupal::service('forum_notifications_subscription.frequency')
+          ->getNotificationFrequencyByEntityAndType($forum->id(), $forum->getEntityTypeId());
+        $title = $entity->getTitle();
+        $forumName = $forum->label();
+        $link = $base_url . '/node/' . $entity->id();
+        $subject = $settings['post_subject'];
+        $message = $settings['post_message'];
+        $systemEmail = \Drupal::config('system.site')->get('mail');
+        foreach ($frequencies as $id => $frequency) {
+          $subscriberUser = $frequency->getOwner();
+          if ($subscriberUser->id() !== $postOwner->id()) {
+            $email = $subscriberUser->getEmail();
+            $userLink = $base_url . '/user/' . $frequency->getOwnerId() . '/edit';
+            $find = [
+              "[name]",
+              "[name_of_poster]",
+              "[forum_topic]",
+              "[forum]",
+              "[link_to_post]",
+              "[link_to_account]",
+              "[system_email]",
+            ];
+            $replace = [
+              $subscriberUser->label(),
+              $postOwner->label(),
+              $title,
+              $forumName,
+              $link,
+              $userLink,
+              $systemEmail,
+            ];
+            $params['title'] = str_replace($find, $replace, $subject);
+            $params['message'] = str_replace($find, $replace, $message);
+            if ($frequency->getFrequency() == 'Daily Digest Emails') {
+              forum_notifications_subscription_email_queue($email, $params['title'], $params['message'], $subscriberUser->id(), 'Daily Digest Emails');
+            }
+            elseif ($frequency->getFrequency() == 'Single Emails') {
+              if ($settings['cron']) {
+                forum_notifications_subscription_email_queue($email, $params['title'], $params['message'], NULL, 'Single Emails');
+              }
+              else {
+                forum_notifications_subscription_emailer('forum_notifications_subscription', 'single_email_queue', $email, $params['title'], $params['message']);
+              }
+            }
+          }
+        }
+        \Drupal::service('forum_notifications_subscription.frequency')
+          ->createNotificationFrequencyForUser($entity, $postOwner);
+      }
+    } catch (\Exception $e) {
+      \Drupal::logger('forum_notifications_subscription')
+        ->alert('Cant find the forum with this id ' . $entity->get('taxonomy_forums')
+            ->getValue() . '. The subscription is not added for this nid:' . $entity->id());
+      return NULL;
+    }
+  }
+}
+
+/**
+ * Implements hook_ENTITY_TYPE_insert().
+ * Send email for registered in this parent node.
+ */
+function forum_notifications_subscription_comment_insert(CommentInterface $comment) {
+  $config = \Drupal::config('forum_notifications_subscription.settings');
+  $settings = $config->get('settings');
+  try {
+    $forumTopic = \Drupal::entityTypeManager()->getStorage('node')
+      ->load($comment->getCommentedEntityId());
+    if ($forumTopic->bundle() === 'forum') {
+      $postOwner = $comment->getOwner();
+      $entity = \Drupal::entityTypeManager()
+        ->getStorage('node')
+        ->load($comment->getCommentedEntityId());
+      if ($entity) {
+        $freq = \Drupal::service('forum_notifications_subscription.frequency')
+          ->checkNotificationFrequencyByEntity($entity);
+        if (!$freq) {
+          \Drupal::service('forum_notifications_subscription.frequency')
+            ->createNotificationFrequencyForUser($entity, $postOwner);
+        }
+      }
+      $frequencies = \Drupal::service('forum_notifications_subscription.frequency')
+        ->getNotificationFrequencyByEntityAndType($forumTopic->id(), $forumTopic->getEntityTypeId());
+      if ($frequencies) {
+        $base_url = Request::createFromGlobals()
+          ->getSchemeAndHttpHost();
+        $forumTopicName = $forumTopic->label();
+        $linkToTopic = $base_url . '/node/' . $forumTopic->id();
+        $commentBody = $comment->get('comment_body')[0]->value;
+        $commentLink = $base_url . '/node/' . $forumTopic->id() . '#comment-' . $comment->id();
+        $subject = $settings['comment_subject'];
+        $message = $settings['comment_message'];
+        $systemEmail = \Drupal::config('system.site')->get('mail');
+        foreach ($frequencies as $id => $frequency) {
+          $subscriberUser = $frequency->getOwner();
+          if ($subscriberUser->id() !== $postOwner->id()) {
+            $email = $subscriberUser->getEmail();
+            $userLink = $base_url . '/user/' . $frequency->getOwnerId() . '/edit';
+            $find = [
+              "[name]",
+              "[name_of_poster]",
+              "[forum_topic]",
+              "[link_to_topic]",
+              "[comment_body]",
+              "[comment_link]",
+              "[topic_hyperlink]",
+              "[comment_hyperlink]",
+              "[system_email]",
+              "[link_to_account]",
+            ];
+            $replace = [
+              $subscriberUser->label(),
+              $postOwner->label(),
+              $forumTopicName,
+              $linkToTopic,
+              $commentBody,
+              $commentLink,
+              $forumTopicName . "(" . $linkToTopic . ")",
+              $commentBody . "(" . $commentLink . ")",
+              $systemEmail,
+              $userLink,
+            ];
+            $params['title'] = str_replace($find, $replace, $subject);
+            $params['message'] = str_replace($find, $replace, $message);
+            if ($frequency->getFrequency() == 'Daily Digest Emails') {
+              forum_notifications_subscription_email_queue($email, $params['title'], $params['message'], $subscriberUser->id(), 'Daily Digest Emails');
+            }
+            elseif ($frequency->getFrequency() == 'Single Emails') {
+              \Drupal::logger('forum_notifications_subscription')
+                ->notice($settings['cron'] . " Cron value");
+              if ($settings['cron']) {
+                forum_notifications_subscription_email_queue($email, $params['title'], $params['message'], NULL, 'Single Emails');
+              }
+              else {
+                forum_notifications_subscription_emailer('forum_notifications_subscription', 'single_email_queue', $email, $params['title'], $params['message']);
+              }
+            }
+          }
+        }
+      }
+    }
+  } catch
+  (\Exception $e) {
+    \Drupal::logger('forum_notifications_subscription')
+      ->alert('Cant find the forum topic with this id ' . $comment->getCommentedEntityId() . '. No notification have been sent. Exception message: ' .
+        $e->getMessage());
+    return NULL;
+  }
+}
+
+/**
+ * Adds email to queue
+ *
+ * @param string $to
+ *   Receipient email.
+ * @param string $subject
+ *   Email subject.
+ * @param string $message
+ *   Email body message.
+ * @param string $user_id
+ *   Email user id.
+ * @param string $queue_type
+ *   Email type of queue.
+ */
+function forum_notifications_subscription_email_queue(string $to, string $subject, string $message, string $user_id, string $queue_type) {
+  $data['to'] = $to;
+  $data['title'] = $subject;
+  $data['message'] = $message;
+
+  $queue_factory = \Drupal::service('queue');
+  if ($queue_type == 'Daily Digest Emails') {
+    $data['user_id'] = $user_id;
+    $queue = $queue_factory->get('daily_digest_email_queue');
+    $queue->createQueue();
+    $queue->createItem($data);
+  }
+  elseif ($queue_type == 'Single Emails') {
+    $queue = $queue_factory->get('single_email_queue');
+    $queue->createQueue();
+    $queue->createItem($data);
+  }
+}
+
+/**
+ * Implements hook_mail().
+ */
+function forum_notifications_subscription_mail($key, &$message, $params) {
+  $options = [
+    'langcode' => $message['langcode'],
+  ];
+
+  $message['from'] = \Drupal::config('system.site')->get('mail');
+  $message['subject'] = t('@title', ['@title' => $params['title']], $options);
+  $message['body'][] = $params['message'];
+}
+
+/**
+ * Send email.
+ */
+function forum_notifications_subscription_emailer(string $module, string $key, string $to, string $subject, string $message) {
+  $mailManager = \Drupal::service('plugin.manager.mail');
+  $params['message'] = $message;
+  $params['title'] = $subject;
+  $langcode = \Drupal::currentUser()->getPreferredLangcode();
+
+  $result = $mailManager->mail($module, $key, $to, $langcode, $params, NULL, TRUE);
+}
+
+/**
+ * Implements hook_form_submit().
+ *
+ * Update user suscriptions on forums and forum topics.
+ */
+function forum_notifications_subscription_user_from_submit(array $form, FormStateInterface $form_state) {
+
+  $forumSubscriptions = $form_state->getValue('forum_table');
+  $changed = FALSE;
+  foreach ($forumSubscriptions as $forumSubscription) {
+    $newForumSubscriptionFrequency = $forumSubscription['forum_frequency'];
+    $forumNotificationEntity = \Drupal::service('forum_notifications_subscription.frequency')
+      ->getNotificationById($forumSubscription['forum_id']);
+    $oldForumSubscriptionFrequency = $forumNotificationEntity->getFrequency();
+
+    // Checks if old subscription is different from selected subscription and if different update notifications.
+    if ($oldForumSubscriptionFrequency != $newForumSubscriptionFrequency) {
+      $changed = TRUE;
+      $forumNotificationEntity->setFrequency($newForumSubscriptionFrequency);
+      $forumNotificationEntity->save();
+    }
+  }
+
+  $topicSubscriptions = $form_state->getValue('topic_table');
+  foreach ($topicSubscriptions as $topicSubscription) {
+    $newTopicSubscriptionFrequency = $topicSubscription['topic_frequency'];
+    $topicNotificationEntity = \Drupal::service('forum_notifications_subscription.frequency')
+      ->getNotificationById($topicSubscription['topic_id']);
+    $oldTopicSubscriptionFrequency = $topicNotificationEntity->getFrequency();
+
+    // Checks if old subscription is different from selected subscription and if different update notifications.
+    if ($oldTopicSubscriptionFrequency != $newTopicSubscriptionFrequency) {
+      $changed = TRUE;
+      $topicNotificationEntity->setFrequency($newTopicSubscriptionFrequency);
+      $topicNotificationEntity->save();
+    }
+  }
+  if ($changed) {
+    \Drupal::messenger()
+      ->addMessage("Thank you for updating your email notification preferences for the forums and topic discussions. If you need to make further changes you can do so from your “My Account” page.");
+  }
+}
+
+/**
+ * Get the forum name
+ *
+ * @throws \Drupal\Component\Plugin\Exception\InvalidPluginDefinitionException
+ * @throws \Drupal\Component\Plugin\Exception\PluginNotFoundException
+ */
+function getForumName($topicId): string|TranslatableMarkup|null {
+  $node = \Drupal::entityTypeManager()->getStorage('node')->load($topicId);
+  $forum = \Drupal::entityTypeManager()
+    ->getStorage('taxonomy_term')
+    ->load($node->get('taxonomy_forums')[0]->target_id);
+
+  return $forum->label();
+}
+

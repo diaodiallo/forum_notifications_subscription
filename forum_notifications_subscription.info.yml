@@ -1,0 +1,8 @@
+name: 'Forum notifications subscription'
+type: module
+description: 'Allow subscription to forum notifications'
+core_version_requirement: ^8 || ^9
+package: 'Notifications'
+dependencies:
+  - forum:forum
+#  - ckeditor_mentions:ckeditor_mentions
