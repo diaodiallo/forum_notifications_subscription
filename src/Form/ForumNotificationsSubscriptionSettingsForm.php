@@ -135,54 +135,6 @@ class ForumNotificationsSubscriptionSettingsForm extends ConfigFormBase {
       '#options' => $dropdown_array,
       '#required' => TRUE,
     ];
-    $form['mentions_settings'] = [
-      '#type' => 'fieldset',
-      '#title' => $this->t('Ckeditor mentions integration settings'),
-    ];
-    $form['mentions_settings']['mentions'] = [
-      '#type' => 'checkbox',
-      '#title' => $this->t('Ckeditor mentions integration'),
-      '#description' => $this->t('Send notifications to tagged users.'),
-      '#default_value' => $settings['mentions'] ?? NULL,
-    ];
-    $form['mentions_settings']['email_settings'] = [
-      '#type' => 'fieldset',
-      '#title' => $this->t('Email settings'),
-      '#states' => [
-        'visible' => [
-          ':input[name="mentions"]' => ['checked' => TRUE],
-          ]
-      ]
-    ];
-    $form['mentions_settings']['email_settings']['info'] = [
-      '#type' => 'markup',
-      '#markup' => $this->t("<div>The same above replacement tokens are allowed for both forum and forum topics .</div>"),
-    ];
-    $form['mentions_settings']['email_settings']['post_tag_subject'] = [
-      '#type' => 'textfield',
-      '#title' => $this->t('Post tag subject'),
-      '#description' => $this->t('The email subject for post tag.'),
-      '#default_value' => $settings['post_tag_subject'] ?? NULL,
-    ];
-    $form['mentions_settings']['email_settings']['post_tag_message'] = [
-      '#type' => 'textarea',
-      '#title' => $this->t('Post tag message'),
-      '#description' => $this->t('The email body for post tag.'),
-      '#default_value' => $settings['post_tag_message'] ?? NULL,
-      '#resizeable' => TRUE,
-    ];
-    $form['mentions_settings']['email_settings']['comment_tag_subject'] = [
-      '#type' => 'textfield',
-      '#title' => $this->t('Comment tag subject'),
-      '#default_value' => $settings['comment_tag_subject'] ?? NULL,
-    ];
-    $form['mentions_settings']['email_settings']['comment_tag_message'] = [
-      '#type' => 'textarea',
-      '#title' => $this->t('Comment tag message'),
-      '#description' => $this->t('The email body for comment tag.'),
-      '#default_value' => $settings['comment_tag_message'] ?? NULL,
-      '#resizeable' => TRUE,
-    ];
     $form['global'] = [
       '#type' => 'fieldset',
       '#title' => $this->t('Global settings'),
@@ -220,11 +172,6 @@ class ForumNotificationsSubscriptionSettingsForm extends ConfigFormBase {
     $config->set('settings.comment_message', $form_state->getValue('comment_message'));
     $config->set('settings.forum_default_frequency', $form_state->getValue('forum_default_frequency'));
     $config->set('settings.topic_default_frequency', $form_state->getValue('topic_default_frequency'));
-    $config->set('settings.mentions', $form_state->getValue('mentions'));
-    $config->set('settings.post_tag_subject', $form_state->getValue('post_tag_subject'));
-    $config->set('settings.post_tag_message', $form_state->getValue('post_tag_message'));
-    $config->set('settings.comment_tag_subject', $form_state->getValue('comment_tag_subject'));
-    $config->set('settings.comment_tag_message', $form_state->getValue('comment_tag_message'));
     $config->set('settings.cron', $form_state->getValue('cron'));
     $config->save();
     parent::submitForm($form, $form_state);

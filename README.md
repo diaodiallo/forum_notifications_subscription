@@ -13,7 +13,6 @@ FEATURES
 * Email subject and body customization (with token replacement).
 * Queues emails (for large notification lists)
 * User notification frequency update (at the user account).
-* Ckeditor mentions integration (if enabled notification are sent to tagged users) 
 
 Module project page:
 http://drupal.org/project/forum_notifications_subscription
@@ -26,7 +25,6 @@ REQUIREMENTS
 This module requires the following modules:
 
  * Forum (https://www.drupal.org/project/forum)
- * For Ckeditor mention integration you need Ckeditor mention 2.0.0
 
 INSTALLATION
  ------------
@@ -36,11 +34,10 @@ INSTALLATION
 CONFIGURATION
 -------------
 
- * The module has a configuration form where we customize subscription buttons, email messages and Ckeditor mentions integration.
- You can fid it at /admin/config/forum_notifications_subscription
- * Show the "Subscription link" field (forum_notifications_subscription) to the view mode you are using to display forums and forum topics.
+ * The module has a configuration form where we customize subscription buttons and email messages.
+ You can find it at /admin/config/forum_notifications_subscription
+ * Enable the "Subscription link" field (forum_notifications_subscription) to the view mode you are using to display forums and forum topics.
    You can also use this field in twig templates like {{ content.forum_notifications_subscription }}.
- * Optional: Enable CKEDITOR_mentions and configure it.
 
 MAINTAINERS
 -----------
