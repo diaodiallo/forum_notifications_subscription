@@ -53,12 +53,11 @@ class ForumNotificationsSubscriptionSettingsForm extends ConfigFormBase {
       '#type' => 'fieldset',
       '#title' => $this->t('Email settings'),
     ];
-    $form['forum_settings']['email_settings']['info'] = [
-      '#type' => 'markup',
-      '#markup' => $this->t("<div>Allowed replacement tokens are: 
-            <ul><li>name</li><li>name_of_poster</li><li>forum_topic</li><li>forum</li><li>link_to_post</li><li>link_to_account</li></ul>
-            Usage: Using [name] or [name_of_poster] in the subject or message, the tokens will be replaced by the user account name and the 
-            post owner name respectively.</div>"),
+    // Add the token tree UI.
+    $form['forum_settings']['email_settings']['forum_token_help'] = [
+      '#theme' => 'token_tree_link',
+      '#token_types' => ['forum_notifications_subscription_forum'],
+      '#global_types' => FALSE,
     ];
     $form['forum_settings']['email_settings']['post_subject'] = [
       '#type' => 'textfield',
@@ -104,13 +103,11 @@ class ForumNotificationsSubscriptionSettingsForm extends ConfigFormBase {
       '#type' => 'fieldset',
       '#title' => $this->t('Email settings'),
     ];
-    $form['topic_settings']['email_settings']['info'] = [
-      '#type' => 'markup',
-      '#markup' => $this->t("<div>Allowed replacement tokens are: 
-            <ul><li>name</li><li>name_of_poster</li><li>forum_topic</li><li>link_to_topic</li><li>comment_body</li><li>comment_link</li>
-            <li>topic_hyperlink</li><li>comment_hyperlink</li><li>system_email</li><li>link_to_account</li></ul>
-            Usage: Using [name] or [name_of_poster] in the subject or message, the tokens will be replaced by the user account name and the 
-            post owner name respectively.</div>"),
+    // Add the token tree UI.
+    $form['topic_settings']['email_settings']['topic_token_help'] = [
+      '#theme' => 'token_tree_link',
+      '#token_types' => ['forum_notifications_subscription_topic'],
+      '#global_types' => FALSE,
     ];
     $form['topic_settings']['email_settings']['comment_subject'] = [
       '#type' => 'textfield',
