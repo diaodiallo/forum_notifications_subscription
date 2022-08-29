@@ -2,7 +2,6 @@
 
 use Drupal\Core\Entity\EntityInterface;
 use Drupal\Core\Entity\Display\EntityViewDisplayInterface;
-use Drupal\Core\StringTranslation\TranslatableMarkup;
 use Drupal\Core\Url;
 use Drupal\Core\Link;
 use Drupal\Core\Form\FormStateInterface;
@@ -88,16 +87,14 @@ function forum_notifications_subscription_entity_view(array &$build, EntityInter
     if ($entity->getEntityTypeId() == 'node') {
       // Load entities by their property values.
       if ($frequency) {
-        $url = Url::fromUserInput('/entity/unsubscription/' . $entity->getEntityTypeId() . '/' . $entity->id());
+        $url = Url::fromUserInput('/forum/unsubscription/' . $entity->getEntityTypeId() . '/' . $entity->id());
         $label = $settings['topic_label_off'];
       }
       else {
-        $url = Url::fromUserInput('/entity/subscription/' . $entity->getEntityTypeId() . '/' . $entity->id());
+        $url = Url::fromUserInput('/forum/subscription/' . $entity->getEntityTypeId() . '/' . $entity->id());
         $label = $settings['topic_label_on'];
-        //$description = "<div>Use this button to subscribe to this topic so you will receive notification when peaple comment.</div>";
       }
-      $the_link = Link::fromTextAndUrl($label, $url);
-      $the_link = $the_link->toRenderable();
+      $the_link = Link::fromTextAndUrl($label, $url)->toRenderable();
 
       $the_link['#attributes'] = [
         'id' => 'forum-subscription',
@@ -106,7 +103,6 @@ function forum_notifications_subscription_entity_view(array &$build, EntityInter
       $build['forum_notifications_subscription'] = [
         '#type' => 'fieldset',
         '#prefix' => "<div>",
-        //        '#prefix' => "<div>" . $description,
         '#suffix' => '</div>',
         '#cache' => [
           'tags' => ['forum_notification_frequency_list'],
@@ -116,17 +112,14 @@ function forum_notifications_subscription_entity_view(array &$build, EntityInter
     }
     elseif ($entity->getEntityTypeId() == 'taxonomy_term') {
       if ($frequency) {
-        $url = Url::fromUserInput('/entity/unsubscription/' . $entity->getEntityTypeId() . '/' . $entity->id());
+        $url = Url::fromUserInput('/forum/unsubscription/' . $entity->getEntityTypeId() . '/' . $entity->id());
         $label = $settings['forum_label_off'];
-        //$description = "<div>Use this button to un-subscribe to this forum so you will receive notification when peaple post topics.</div>";
       }
       else {
-        $url = Url::fromUserInput('/entity/subscription/' . $entity->getEntityTypeId() . '/' . $entity->id());
+        $url = Url::fromUserInput('/forum/subscription/' . $entity->getEntityTypeId() . '/' . $entity->id());
         $label = $settings['forum_label_on'];
-        //$description = "<div>Use this button to subscribe to this forum so you will receive notification when peaple post topics.</div>";
       }
-      $the_link = Link::fromTextAndUrl($label, $url);
-      $the_link = $the_link->toRenderable();
+      $the_link = Link::fromTextAndUrl($label, $url)->toRenderable();
 
       $the_link['#attributes'] = [
         'id' => 'forum-subscription',
@@ -184,11 +177,11 @@ function forum_notifications_subscription_form_alter(&$form, FormStateInterface 
       ];
       $form['forum_subscriptions']['forum_daily_info'] = [
         '#type' => 'markup',
-        '#markup' => "<div><strong>Description for daily digest emails:</strong><br> Daily digest emails will be sent out at the end of each day notifying you of any new discussion topics that were created in this forum.</div>",
+        '#markup' => "<div><strong>Daily digest emails:</strong><br> Daily digest emails will be sent out at the end of each day notifying you of any new discussion topics that were created in this forum.</div>",
       ];
       $form['forum_subscriptions']['forum_digest_info'] = [
         '#type' => 'markup',
-        '#markup' => "<div><strong>Description for single emails:</strong><br> Single emails will be sent out each time a new discussion topic is created in this forum.</div>",
+        '#markup' => "<div><strong>Single emails:</strong><br> Single emails will be sent out each time a new discussion topic is created in this forum.</div>",
       ];
       $forum_header = [
         'forum_id' => t('#'),
@@ -229,11 +222,11 @@ function forum_notifications_subscription_form_alter(&$form, FormStateInterface 
       ];
       $form['topic_subscriptions']['topic_daily_info'] = [
         '#type' => 'markup',
-        '#markup' => "<div><strong>Description for daily digest emails:</strong><br> Daily digest emails will be sent out at the end of each day notifying you of any new comments made in this specific  discussion topic.</div>",
+        '#markup' => "<div><strong>Daily digest emails:</strong><br> Daily digest emails will be sent out at the end of each day notifying you of any new comments made in this specific  discussion topic.</div>",
       ];
       $form['topic_subscriptions']['topic_digest_info'] = [
         '#type' => 'markup',
-        '#markup' => "<div><strong>Description for single emails:</strong><br> Single emails will be sent out each time a new comment is made in this specific discussion topic.</div>",
+        '#markup' => "<div><strong>Single emails:</strong><br> Single emails will be sent out each time a new comment is made in this specific discussion topic.</div>",
       ];
       $topic_header = [
         'topic_id' => t('#'),
@@ -282,7 +275,6 @@ function forum_notifications_subscription_form_alter(&$form, FormStateInterface 
 function forum_notifications_subscription_node_insert(Drupal\Core\Entity\EntityInterface $entity) {
   $config = \Drupal::config('forum_notifications_subscription.settings');
   $settings = $config->get('settings');
-  $tokenService = new Token();
   if ($entity->bundle() == 'forum') {
     try {
       $forum = \Drupal::entityTypeManager()
@@ -305,8 +297,8 @@ function forum_notifications_subscription_node_insert(Drupal\Core\Entity\EntityI
             $data['frequency'] = $frequency;
             $data['system_email'] = $systemEmail;
             $data['base_url'] = $base_url;
-            $subject = $tokenService->replacePlain($settings['post_subject'], $data);
-            $body = $tokenService->replacePlain($settings['post_message'], $data);
+            $subject = \Drupal::service('forum_notifications_subscription.token')->replacePlain($settings['post_subject'], $data);
+            $body = \Drupal::service('forum_notifications_subscription.token')->replacePlain($settings['post_message'], $data);
             $params['title'] = $subject;
             $params['message'] = $body;
             if ($frequency->getFrequency() == 'Daily Digest Emails') {
@@ -341,7 +333,6 @@ function forum_notifications_subscription_node_insert(Drupal\Core\Entity\EntityI
 function forum_notifications_subscription_comment_insert(CommentInterface $comment) {
   $config = \Drupal::config('forum_notifications_subscription.settings');
   $settings = $config->get('settings');
-  $tokenService = new Token();
   try {
     $forumTopic = \Drupal::entityTypeManager()->getStorage('node')
       ->load($comment->getCommentedEntityId());
@@ -368,8 +359,8 @@ function forum_notifications_subscription_comment_insert(CommentInterface $comme
             $data['frequency'] = $frequency;
             $data['system_email'] = $systemEmail;
             $data['base_url'] = $base_url;
-            $subject = $tokenService->replacePlain($settings['comment_subject'], $data);
-            $body = $tokenService->replacePlain($settings['comment_message'], $data);
+            $subject = \Drupal::service('forum_notifications_subscription.token')->replacePlain($settings['comment_subject'], $data);
+            $body = \Drupal::service('forum_notifications_subscription.token')->replacePlain($settings['comment_message'], $data);
             $params['title'] = $subject;
             $params['message'] = $body;
             if ($frequency->getFrequency() == 'Daily Digest Emails') {
@@ -506,74 +497,74 @@ function forum_notifications_subscription_token_info(): array
 {
   $info = [];
 
-  $info['types']['forum_notifications_subscription_forum'] = [
+  $info['types']['fns_topic'] = [
     'name' => t('Forum tokens'),
     'description' => t('Forum notifications Tokens.'),
   ];
 
-  $info['tokens']['forum_notifications_subscription_forum']['user_name'] = [
+  $info['tokens']['fns_topic']['user_name'] = [
     'name' => 'User Name',
     'description' => t('This token is associated with the subscriber name.')
   ];
-  $info['tokens']['forum_notifications_subscription_forum']['poster_name'] = [
+  $info['tokens']['fns_topic']['poster_name'] = [
     'name' => 'Poster Name',
     'description' => t('This token is associated with the poster name.')
   ];
-  $info['tokens']['forum_notifications_subscription_forum']['forum_name'] = [
+  $info['tokens']['fns_topic']['forum_name'] = [
     'name' => 'Forum Name',
     'description' => t('This token is associated with forum name.')
   ];
-  $info['tokens']['forum_notifications_subscription_forum']['topic_name'] = [
+  $info['tokens']['fns_topic']['topic_name'] = [
     'name' => 'Topic Name',
     'description' => t('This token is associated with topic name.')
   ];
-  $info['tokens']['forum_notifications_subscription_forum']['topic_url'] = [
+  $info['tokens']['fns_topic']['topic_url'] = [
     'name' => 'Topic Url',
     'description' => t('This token is associated with topic url.')
   ];
-  $info['tokens']['forum_notifications_subscription_forum']['user_edit'] = [
+  $info['tokens']['fns_topic']['user_edit'] = [
     'name' => 'User Edit',
     'description' => t('This token is associated with user account edit.')
   ];
-  $info['tokens']['forum_notifications_subscription_forum']['system_email'] = [
+  $info['tokens']['fns_topic']['system_email'] = [
     'name' => 'System Email',
     'description' => t('This token is associated with system email.')
   ];
 
-  $info['types']['forum_notifications_subscription_topic'] = [
+  $info['types']['fns_comment'] = [
     'name' => t('Topic tokens'),
     'description' => t('Forum notifications topic Tokens.'),
   ];
 
-  $info['tokens']['forum_notifications_subscription_topic']['user_name'] = [
+  $info['tokens']['fns_comment']['user_name'] = [
     'name' => 'User Name',
     'description' => t('This token is associated with the subscriber name.')
   ];
-  $info['tokens']['forum_notifications_subscription_topic']['poster_name'] = [
+  $info['tokens']['fns_comment']['poster_name'] = [
     'name' => 'Poster Name',
     'description' => t('This token is associated with the commenter name.')
   ];
-  $info['tokens']['forum_notifications_subscription_topic']['topic_name'] = [
+  $info['tokens']['fns_comment']['topic_name'] = [
     'name' => 'Topic Name',
     'description' => t('This token is associated with the topic name.')
   ];
-  $info['tokens']['forum_notifications_subscription_topic']['topic_url'] = [
+  $info['tokens']['fns_comment']['topic_url'] = [
     'name' => 'Topic Url',
     'description' => t('This token is associated with the topic url.')
   ];
-  $info['tokens']['forum_notifications_subscription_topic']['comment_body'] = [
+  $info['tokens']['fns_comment']['comment_body'] = [
     'name' => 'Comment Body',
     'description' => t('This token is associated with comment body.')
   ];
-  $info['tokens']['forum_notifications_subscription_topic']['comment_url'] = [
+  $info['tokens']['fns_comment']['comment_url'] = [
     'name' => 'Comment Url',
     'description' => t('This token is associated with comment url.')
   ];
-  $info['tokens']['forum_notifications_subscription_topic']['user_edit'] = [
+  $info['tokens']['fns_comment']['user_edit'] = [
     'name' => 'User Edit',
     'description' => t('This token is associated with user account edit.')
   ];
-  $info['tokens']['forum_notifications_subscription_topic']['system_email'] = [
+  $info['tokens']['fns_comment']['system_email'] = [
     'name' => 'System Email',
     'description' => t('This token is associated with system email.')
   ];
@@ -587,10 +578,9 @@ function forum_notifications_subscription_token_info(): array
  */
 function forum_notifications_subscription_tokens($type, $tokens, array $data, array $options, BubbleableMetadata $bubbleable_metadata) : array {
   $replacements = [];
-  if (str_contains($type, 'forum_notifications_subscription')) {
+  if (str_contains($type, 'fns_')) {
     $node = $data['node'];
     $frequency = $data['frequency'];
-    $comment = $data['comment'];
     foreach ($tokens as $name => $original) {
       switch ($name) {
         case 'user_name':
@@ -600,8 +590,7 @@ function forum_notifications_subscription_tokens($type, $tokens, array $data, ar
           $replacements[$original] = $text ?? $node->getTitle();
           break;
         case 'topic_url':
-          // $base_url . '/node/' . $entity->id();
-          $replacements[$original] = $text ?? $node->toUrl()->toString();
+          $replacements[$original] = $text ?? $data['base_url'] . '/node/' . $node->id();
           break;
         case 'user_edit':
           $replacements[$original] = $text ?? $data['base_url'] . '/user/' . $frequency->getOwnerId() . '/edit';
@@ -613,11 +602,11 @@ function forum_notifications_subscription_tokens($type, $tokens, array $data, ar
           break;
       }
     }
-    if ($type == 'forum_notifications_subscription_forum') {
+    if ($type == 'fns_topic') {
       foreach ($tokens as $name => $original) {
         switch ($name) {
           case 'poster_name':
-            $replacements[$original] = $text ?? $node->getOwer()->label();
+            $replacements[$original] = $text ?? $node->getOwner()->label();
             break;
           case 'forum_name':
             /** @var TaxonomyTerm $taxonomy_term */
@@ -629,7 +618,8 @@ function forum_notifications_subscription_tokens($type, $tokens, array $data, ar
         }
       }
     }
-    elseif ($type == 'forum_notifications_subscription_topic') {
+    elseif ($type == 'fns_comment') {
+      $comment = $data['comment'];
       foreach ($tokens as $name => $original) {
         switch ($name) {
           case 'poster_name':
@@ -639,8 +629,7 @@ function forum_notifications_subscription_tokens($type, $tokens, array $data, ar
             $replacements[$original] = $text ?? $comment->get('comment_body')[0]->value;
             break;
           case 'comment_url':
-            // $data['base_url'] . '/node/' . $ode->id() . '#comment-' . $comment->id();
-            $replacements[$original] = $comment->toUrl()->toString();
+            $replacements[$original] = $data['base_url'] . '/node/' . $node->id() . '#comment-' . $comment->id();
             break;
           default:
             break;
@@ -657,7 +646,7 @@ function forum_notifications_subscription_tokens($type, $tokens, array $data, ar
  * @throws \Drupal\Component\Plugin\Exception\InvalidPluginDefinitionException
  * @throws \Drupal\Component\Plugin\Exception\PluginNotFoundException
  */
-function getForumName($topicId): string|TranslatableMarkup|null {
+function getForumName($topicId) {
   $node = \Drupal::entityTypeManager()->getStorage('node')->load($topicId);
   $forum = \Drupal::entityTypeManager()
     ->getStorage('taxonomy_term')

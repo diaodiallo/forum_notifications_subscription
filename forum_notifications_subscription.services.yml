@@ -2,3 +2,6 @@ services:
   forum_notifications_subscription.frequency:
     class: Drupal\forum_notifications_subscription\ForumNotificationsSubscriptionService
     arguments: ['@current_user', '@entity_type.manager']
+  forum_notifications_subscription.token:
+    class: Drupal\forum_notifications_subscription\ForumNotificationsSubscriptionTokenService
+    arguments: ['@token']

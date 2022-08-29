@@ -56,7 +56,7 @@ class ForumNotificationsSubscriptionSettingsForm extends ConfigFormBase {
     // Add the token tree UI.
     $form['forum_settings']['email_settings']['forum_token_help'] = [
       '#theme' => 'token_tree_link',
-      '#token_types' => ['forum_notifications_subscription_forum'],
+      '#token_types' => ['fns_topic'],
       '#global_types' => FALSE,
     ];
     $form['forum_settings']['email_settings']['post_subject'] = [
@@ -106,7 +106,7 @@ class ForumNotificationsSubscriptionSettingsForm extends ConfigFormBase {
     // Add the token tree UI.
     $form['topic_settings']['email_settings']['topic_token_help'] = [
       '#theme' => 'token_tree_link',
-      '#token_types' => ['forum_notifications_subscription_topic'],
+      '#token_types' => ['fns_comment'],
       '#global_types' => FALSE,
     ];
     $form['topic_settings']['email_settings']['comment_subject'] = [

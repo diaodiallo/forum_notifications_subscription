@@ -22,10 +22,10 @@ class ActionLinkController extends ControllerBase implements ContainerInjectionI
     $settings = $config->get('settings');
     $selector = "#forum-subscription";
     if ($entity_type_id == 'node') {
-      $label = $settings['options']['topic_label_off'];
+      $label = $settings['topic_label_off'];
     }
     elseif ($entity_type_id == 'taxonomy_term') {
-      $label = $settings['options']['forum_label_off'];
+      $label = $settings['forum_label_off'];
     }
     $content = "<p><a href=\"/forum/unsubscription/" . $entity_type_id . "/" . $entity_id . "\" id=\"forum-subscription\" class=\"use-ajax btn btn-primary\">" . $label . "</a></p>";
     $response = new AjaxResponse();
@@ -40,10 +40,10 @@ class ActionLinkController extends ControllerBase implements ContainerInjectionI
     $settings = $config->get('settings');
     $selector = "#forum-subscription";
     if ($entity_type_id == 'node') {
-      $label = $settings['options']['topic_label_on'];
+      $label = $settings['topic_label_on'];
     }
     elseif ($entity_type_id == 'taxonomy_term') {
-      $label = $settings['options']['forum_label_on'];
+      $label = $settings['forum_label_on'];
     }
     $content = "<p><a href=\"/forum/subscription/" . $entity_type_id . "/" . $entity_id . "\" id=\"forum-subscription\" class=\"use-ajax btn btn-primary\">" . $label . "</a></p>";
     $response = new AjaxResponse();

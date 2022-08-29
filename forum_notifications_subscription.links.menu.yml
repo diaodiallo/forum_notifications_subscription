@@ -1,18 +1,19 @@
-forum_notifications_subscription.admin.structure.settings:
-  title: Forum Notifications Subscription Settings
-  description: 'Forum Notifications Subscription Settings'
-  route_name: forum_notifications_subscription.settings
-  parent: system.admin_structure
+forum_notifications_subscription.main_menu:
+  title: 'Forum Notifications'
+  description: 'Forum Notifications Subscription settings'
+  route_name: forum_notifications_subscription.config_form
+  parent: system.admin_config_system
 
 entity.forum_notification_frequency.collection:
-  title: 'Forum notification frequency list'
+  title: 'Notification frequency list'
   route_name: entity.forum_notification_frequency.collection
-  description: 'List Forum notification frequency entities'
+  description: 'Notification frequency entities list'
   parent: system.admin_structure
   weight: 100
 
 forum_notification_frequency.admin.structure.settings:
-  title: Forum notification frequency settings
-  description: 'Configure Forum notification frequency entities'
+  title: 'Notification frequency settings'
+  description: 'Notification frequency entities settings'
   route_name: forum_notification_frequency.settings
   parent: system.admin_structure
+  weight: 100
